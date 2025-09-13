@@ -39,14 +39,20 @@ sudo chown $CURRENT_USER:$CURRENT_GROUP "$APP_DIR"/*
 echo "🐍 Installing Python dependencies..."
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     sudo apt-get update
-    sudo apt-get install -y python3-pip python3-pygame python3-requests python3-geopy
+    sudo apt-get install -y python3-pip python3-pygame python3-requests python3-geopy python3-venv python3-full
+    
+    # Create virtual environment for Python packages
+    echo "🔧 Creating virtual environment..."
+    python3 -m venv "$APP_DIR/venv"
+    source "$APP_DIR/venv/bin/activate"
+    
+    # Install Python packages in virtual environment
+    echo "📦 Installing Python packages in virtual environment..."
+    pip install -r requirements.txt
 else
     echo "   Skipping apt-get (not on Linux). Please install dependencies manually:"
     echo "   pip3 install -r requirements.txt"
 fi
-
-# Install Python packages
-pip3 install -r requirements.txt
 
 # Set up environment configuration
 echo "⚙️  Setting up configuration..."
@@ -59,7 +65,7 @@ fi
 # Install systemd service (only on Linux systems)
 echo "🔧 Installing systemd service..."
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # Create dynamic service file with current user
+    # Create dynamic service file with current user and virtual environment
     cat > /tmp/mta-display.service << EOF
 [Unit]
 Description=NYC MTA Subway Display
@@ -73,7 +79,7 @@ Group=$CURRENT_GROUP
 WorkingDirectory=$APP_DIR
 Environment=DISPLAY=:0
 Environment=PYTHONPATH=$APP_DIR
-ExecStart=/usr/bin/python3 $APP_DIR/mta_display.py
+ExecStart=$APP_DIR/venv/bin/python $APP_DIR/mta_display.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -102,13 +108,14 @@ fi
 
 # Create startup script
 echo "🚀 Creating startup script..."
-cat > "$APP_DIR/start.sh" << 'EOF'
+cat > "$APP_DIR/start.sh" << EOF
 #!/bin/bash
 # Wait for X server to be ready
 sleep 10
 export DISPLAY=:0
-cd /home/pi/mta-display
-python3 mta_display.py
+cd $APP_DIR
+source venv/bin/activate
+python mta_display.py
 EOF
 
 chmod +x "$APP_DIR/start.sh"

@@ -34,87 +34,35 @@ class TestMTADisplay(MTADisplay):
         
         mock_arrivals = [
             {
-                'route_id': '1',
+                'route_id': 'B',
+                'station_id': 'test_station',
+                'arrival_time': current_time + timedelta(minutes=1),
+                'destination': 'Uptown',
+                'detail': '145 St',
+                'status': 'On Time'
+            },
+            {
+                'route_id': 'F',
                 'station_id': 'test_station',
                 'arrival_time': current_time + timedelta(minutes=2),
-                'destination': 'To South Ferry',
+                'destination': 'Downtown & Brooklyn',
+                'detail': 'Coney Island',
                 'status': 'On Time'
             },
             {
-                'route_id': '2',
+                'route_id': '1',
                 'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=4),
-                'destination': 'To Flatbush Av',
-                'status': 'On Time'
-            },
-            {
-                'route_id': '3',
-                'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=6),
-                'destination': 'To New Lots Av',
+                'arrival_time': current_time + timedelta(minutes=3),
+                'destination': 'Uptown',
+                'detail': '242 St',
                 'status': 'On Time'
             },
             {
                 'route_id': 'A',
                 'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=3),
-                'destination': 'To Far Rockaway',
-                'status': 'On Time'
-            },
-            {
-                'route_id': 'C',
-                'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=5),
-                'destination': 'To Euclid Av',
-                'status': 'On Time'
-            },
-            {
-                'route_id': 'E',
-                'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=7),
-                'destination': 'To Jamaica Center',
-                'status': 'On Time'
-            },
-            {
-                'route_id': 'N',
-                'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=1),
-                'destination': 'To Coney Island',
-                'status': 'Now'
-            },
-            {
-                'route_id': 'Q',
-                'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=8),
-                'destination': 'To Coney Island',
-                'status': 'On Time'
-            },
-            {
-                'route_id': 'R',
-                'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=9),
-                'destination': 'To Bay Ridge-95 St',
-                'status': 'On Time'
-            },
-            {
-                'route_id': 'W',
-                'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=11),
-                'destination': 'To Astoria-Ditmars Blvd',
-                'status': 'On Time'
-            },
-            {
-                'route_id': 'L',
-                'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=13),
-                'destination': 'To Canarsie-Rockaway Pkwy',
-                'status': 'On Time'
-            },
-            {
-                'route_id': 'G',
-                'station_id': 'test_station',
-                'arrival_time': current_time + timedelta(minutes=15),
-                'destination': 'To Church Av',
+                'arrival_time': current_time + timedelta(minutes=4),
+                'destination': 'Uptown',
+                'detail': 'Inwood-207 St',
                 'status': 'On Time'
             }
         ]

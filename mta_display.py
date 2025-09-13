@@ -55,35 +55,38 @@ class MTADisplay:
         self.setup_display()
         self.setup_fonts()
         
-        # MTA color scheme
+        # MTA color scheme - matching the real display
         self.colors = {
-            'background': (0, 0, 0),      # Black
-            'text': (255, 255, 255),      # White
-            'route_1': (238, 42, 36),     # Red
-            'route_2': (0, 57, 166),      # Blue
-            'route_3': (0, 163, 65),      # Green
-            'route_4': (255, 99, 25),     # Orange
-            'route_5': (163, 38, 56),     # Purple
-            'route_6': (0, 118, 50),      # Dark Green
-            'route_7': (255, 255, 0),     # Yellow
-            'route_8': (0, 0, 0),         # Black
-            'route_9': (128, 128, 128),   # Gray
-            'route_A': (0, 57, 166),      # Blue
-            'route_B': (0, 57, 166),      # Blue
-            'route_C': (0, 57, 166),      # Blue
-            'route_D': (0, 57, 166),      # Blue
-            'route_E': (0, 57, 166),      # Blue
-            'route_F': (0, 57, 166),      # Blue
-            'route_G': (108, 190, 69),    # Light Green
-            'route_J': (153, 102, 51),    # Brown
-            'route_L': (166, 86, 40),     # Light Brown
-            'route_M': (0, 57, 166),      # Blue
-            'route_N': (255, 255, 0),     # Yellow
-            'route_Q': (255, 255, 0),     # Yellow
-            'route_R': (255, 255, 0),     # Yellow
-            'route_S': (128, 128, 128),   # Gray
-            'route_W': (255, 255, 0),     # Yellow
-            'route_Z': (153, 102, 51),    # Brown
+            'background': (0, 20, 60),        # Dark blue background like real MTA signs
+            'text_primary': (135, 206, 250),  # Light blue text
+            'text_secondary': (200, 220, 255), # Lighter blue for secondary text
+            'text_white': (255, 255, 255),    # White text
+            'frame': (0, 0, 0),               # Black frame
+            'status_light': (0, 255, 0),      # Green status light
+            # Route colors - matching MTA official colors
+            'route_1': (238, 42, 36),         # Red
+            'route_2': (0, 57, 166),          # Blue
+            'route_3': (0, 163, 65),          # Green
+            'route_4': (255, 99, 25),         # Orange
+            'route_5': (163, 38, 56),         # Purple
+            'route_6': (0, 118, 50),          # Dark Green
+            'route_7': (255, 255, 0),         # Yellow
+            'route_A': (0, 57, 166),          # Blue
+            'route_B': (255, 99, 25),         # Orange (B line)
+            'route_C': (0, 57, 166),          # Blue
+            'route_D': (0, 57, 166),          # Blue
+            'route_E': (0, 57, 166),          # Blue
+            'route_F': (255, 99, 25),         # Orange (F line)
+            'route_G': (108, 190, 69),        # Light Green
+            'route_J': (153, 102, 51),        # Brown
+            'route_L': (166, 86, 40),         # Light Brown
+            'route_M': (0, 57, 166),          # Blue
+            'route_N': (255, 255, 0),         # Yellow
+            'route_Q': (255, 255, 0),         # Yellow
+            'route_R': (255, 255, 0),         # Yellow
+            'route_S': (128, 128, 128),       # Gray
+            'route_W': (255, 255, 0),         # Yellow
+            'route_Z': (153, 102, 51),        # Brown
         }
         
         self.running = True
@@ -101,22 +104,26 @@ class MTADisplay:
     def setup_fonts(self):
         """Load fonts for the display"""
         try:
-            # Try to load system fonts that match MTA style
-            self.title_font = pygame.font.Font(None, 72)
-            self.route_font = pygame.font.Font(None, 48)
-            self.time_font = pygame.font.Font(None, 36)
-            self.station_font = pygame.font.Font(None, 60)
+            # Fonts sized to match the real MTA display
+            self.sequence_font = pygame.font.Font(None, 36)      # Small sequence numbers
+            self.route_font = pygame.font.Font(None, 42)         # Route letters in circles
+            self.destination_font = pygame.font.Font(None, 48)   # Main destination text
+            self.detail_font = pygame.font.Font(None, 32)        # Secondary details
+            self.time_font = pygame.font.Font(None, 40)          # Arrival times
+            self.time_unit_font = pygame.font.Font(None, 24)     # "MM" for minutes
         except:
             # Fallback to default font
-            self.title_font = pygame.font.Font(None, 72)
-            self.route_font = pygame.font.Font(None, 48)
-            self.time_font = pygame.font.Font(None, 36)
-            self.station_font = pygame.font.Font(None, 60)
+            self.sequence_font = pygame.font.Font(None, 36)
+            self.route_font = pygame.font.Font(None, 42)
+            self.destination_font = pygame.font.Font(None, 48)
+            self.detail_font = pygame.font.Font(None, 32)
+            self.time_font = pygame.font.Font(None, 40)
+            self.time_unit_font = pygame.font.Font(None, 24)
     
     def get_route_color(self, route_id: str) -> tuple:
         """Get the color for a specific route"""
         route_key = f"route_{route_id}"
-        return self.colors.get(route_key, self.colors['text'])
+        return self.colors.get(route_key, self.colors['text_primary'])
     
     def fetch_mta_data(self) -> List[Dict]:
         """Fetch real-time data from MTA API"""
@@ -191,65 +198,101 @@ class MTADisplay:
             minutes = int(delta.total_seconds() / 60)
             return f"{minutes}m"
     
-    def draw_route_circle(self, surface, x: int, y: int, route_id: str, radius: int = 25):
+    def draw_route_circle(self, surface, x: int, y: int, route_id: str, radius: int = 30):
         """Draw a route circle in MTA style"""
         color = self.get_route_color(route_id)
         pygame.draw.circle(surface, color, (x, y), radius)
         
-        # Draw route text
-        text_surface = self.route_font.render(route_id, True, self.colors['text'])
+        # Draw route text in white
+        text_surface = self.route_font.render(route_id, True, self.colors['text_white'])
         text_rect = text_surface.get_rect(center=(x, y))
         surface.blit(text_surface, text_rect)
     
-    def draw_arrival(self, surface, x: int, y: int, arrival: Dict):
-        """Draw a single arrival entry"""
+    def draw_arrival(self, surface, x: int, y: int, arrival: Dict, sequence_num: int):
+        """Draw a single arrival entry matching the real MTA display layout"""
         route_id = arrival['route_id']
         destination = arrival['destination']
         time_remaining = self.format_time_remaining(arrival['arrival_time'])
         
-        # Draw route circle
-        self.draw_route_circle(surface, x + 30, y + 25, route_id)
+        # Draw very subtle background rectangle for each entry (with more vertical padding)
+        entry_rect = pygame.Rect(x + 10, y + 5, self.screen.get_width() - 80, 80)  # Increased height to 80
+        pygame.draw.rect(surface, (5, 15, 35), entry_rect)  # Very subtle background
+        # Remove the border for cleaner look
         
-        # Draw destination
-        dest_surface = self.time_font.render(destination, True, self.colors['text'])
-        surface.blit(dest_surface, (x + 80, y + 10))
+        # Draw sequence number (left side)
+        seq_surface = self.sequence_font.render(str(sequence_num), True, self.colors['text_primary'])
+        surface.blit(seq_surface, (x + 20, y + 20))  # Shifted down by 5 pixels
         
-        # Draw time remaining
-        time_surface = self.time_font.render(time_remaining, True, self.colors['text'])
-        surface.blit(time_surface, (x + 80, y + 35))
+        # Draw route circle (centered within the taller entry box)
+        # New entry box is from y+5 to y+85, so center is at y+45
+        self.draw_route_circle(surface, x + 80, y + 45, route_id, radius=25)
+        
+        # Draw main destination (larger, bold text)
+        dest_surface = self.destination_font.render(destination, True, self.colors['text_primary'])
+        surface.blit(dest_surface, (x + 130, y + 15))  # Shifted down by 5 pixels
+        
+        # Draw secondary details (smaller text below destination with more spacing)
+        detail_text = arrival.get('detail', '')
+        if detail_text:
+            detail_surface = self.detail_font.render(detail_text, True, self.colors['text_secondary'])
+            surface.blit(detail_surface, (x + 130, y + 50))  # Shifted down by 5 pixels
+        
+        # Draw arrival time (right side) - matching the real display format
+        if time_remaining == "Now":
+            time_num = "Now"
+            time_unit = ""
+        elif time_remaining.endswith('s'):
+            time_num = time_remaining
+            time_unit = ""
+        else:
+            # Extract minutes and show "MM" format
+            time_num = time_remaining.replace('m', '')
+            time_unit = "MM"
+        
+        # Right-align the time text
+        time_surface = self.time_font.render(time_num, True, self.colors['text_primary'])
+        time_rect = time_surface.get_rect()
+        time_x = self.screen.get_width() - 50 - time_rect.width  # Right-align with 50px margin
+        surface.blit(time_surface, (time_x, y + 20))  # Shifted down by 5 pixels
+        
+        if time_unit:
+            unit_surface = self.time_unit_font.render(time_unit, True, self.colors['text_primary'])
+            unit_rect = unit_surface.get_rect()
+            unit_x = self.screen.get_width() - 50 - unit_rect.width  # Right-align with 50px margin
+            surface.blit(unit_surface, (unit_x, y + 45))  # Shifted down by 5 pixels
     
     def draw_display(self, arrivals: List[Dict]):
-        """Draw the main display"""
+        """Draw the main display matching the real MTA sign layout"""
+        # Fill with dark blue background
         self.screen.fill(self.colors['background'])
         
-        # Draw title
-        title_surface = self.title_font.render("MTA SUBWAY TIMES", True, self.colors['text'])
-        title_rect = title_surface.get_rect(center=(self.screen.get_width() // 2, 50))
-        self.screen.blit(title_surface, title_rect)
+        # Draw black frame around the display
+        frame_rect = pygame.Rect(10, 10, self.screen.get_width() - 20, self.screen.get_height() - 20)
+        pygame.draw.rect(self.screen, self.colors['frame'], frame_rect, 3)
         
-        # Draw station name
-        station_surface = self.station_font.render(self.station_name, True, self.colors['text'])
-        station_rect = station_surface.get_rect(center=(self.screen.get_width() // 2, 120))
-        self.screen.blit(station_surface, station_rect)
+        # Draw green status light at top center
+        status_light_rect = pygame.Rect(self.screen.get_width() // 2 - 5, 15, 10, 10)
+        pygame.draw.rect(self.screen, self.colors['status_light'], status_light_rect)
         
-        # Draw current time
-        current_time = datetime.now().strftime("%I:%M %p")
-        time_surface = self.time_font.render(current_time, True, self.colors['text'])
-        time_rect = time_surface.get_rect(center=(self.screen.get_width() // 2, 160))
-        self.screen.blit(time_surface, time_rect)
+        # Draw sign ID in top left (like "468-0-4" in the image)
+        sign_id = "MTA-001"
+        id_surface = self.detail_font.render(sign_id, True, self.colors['text_white'])
+        self.screen.blit(id_surface, (20, 20))
         
-        # Draw arrivals
-        y_start = 220
-        y_spacing = 80
+        # Draw arrivals in horizontal rows like the real display
+        y_start = 80
+        y_spacing = 90  # Increased space between rows for better readability
         
-        for i, arrival in enumerate(arrivals[:8]):  # Show max 8 arrivals
+        for i, arrival in enumerate(arrivals[:4]):  # Show max 4 arrivals like real display
             y_pos = y_start + (i * y_spacing)
-            self.draw_arrival(self.screen, 50, y_pos, arrival)
-        
-        # Draw last updated time
-        updated_text = f"Updated: {datetime.now().strftime('%I:%M:%S %p')}"
-        updated_surface = self.time_font.render(updated_text, True, self.colors['text'])
-        self.screen.blit(updated_surface, (50, self.screen.get_height() - 50))
+            self.draw_arrival(self.screen, 30, y_pos, arrival, i + 1)
+            
+            # Draw subtle divider line between entries (except after the last one)
+            if i < len(arrivals[:4]) - 1:
+                divider_y = y_pos + 88  # Position the divider below the current entry (y_pos + 5 + 80 + 3 = y_pos + 88)
+                # Use a more subtle color and thinner line
+                pygame.draw.line(self.screen, (50, 80, 120), 
+                               (60, divider_y), (self.screen.get_width() - 60, divider_y), 1)
         
         pygame.display.flip()
     
