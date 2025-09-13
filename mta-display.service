@@ -1,0 +1,20 @@
+[Unit]
+Description=NYC MTA Subway Display
+After=network.target graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/mta-display
+Environment=DISPLAY=:0
+Environment=PYTHONPATH=/home/pi/mta-display
+ExecStart=/usr/bin/python3 /home/pi/mta-display/mta_display.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical-session.target
