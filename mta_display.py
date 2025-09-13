@@ -16,6 +16,13 @@ from dotenv import load_dotenv
 from geopy.distance import geodesic
 import logging
 
+try:
+    from google.transit import gtfs_realtime_pb2
+    PROTOBUF_AVAILABLE = True
+except ImportError:
+    PROTOBUF_AVAILABLE = False
+    logging.warning("GTFS protobuf bindings not available. Install with: pip install gtfs-realtime-bindings")
+
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -26,28 +33,27 @@ load_dotenv()
 class MTADisplay:
     def __init__(self):
         """Initialize the MTA Display application"""
-        self.api_key = os.getenv('MTA_API_KEY')  # Optional - no longer required
+        self.api_key = os.getenv('MTA_API_KEY')  # Optional - feeds are free
         if not self.api_key:
             logger.info("No MTA API key provided - using free public feeds")
         
-        self.latitude = float(os.getenv('LATITUDE', '40.7589'))
-        self.longitude = float(os.getenv('LONGITUDE', '-73.9851'))
-        self.station_id = os.getenv('STATION_ID')
-        self.station_name = os.getenv('STATION_NAME', 'Times Sq-42 St')
+        self.latitude = float(os.getenv('LATITUDE', '40.6843'))
+        self.longitude = float(os.getenv('LONGITUDE', '-73.9779'))
+        self.station_id = os.getenv('STATION_ID', 'A42')
+        self.station_name = os.getenv('STATION_NAME', 'Atlantic Av-Barclays Ctr')
         self.refresh_interval = int(os.getenv('REFRESH_INTERVAL', '30'))
         self.fullscreen = os.getenv('FULLSCREEN', 'true').lower() == 'true'
         
-        # MTA API endpoints
-        self.base_url = "https://api-endpoint.mta.info/Dataservice/mtagtfsrealtime/nyct%2Fgtfs"
+        # MTA API endpoints - Free public feeds (no API key required)
         self.feed_urls = {
-            '123456': f"{self.base_url}-123456",
-            'ACE': f"{self.base_url}-ace",
-            'BDFM': f"{self.base_url}-bdfm",
-            'G': f"{self.base_url}-g",
-            'JZ': f"{self.base_url}-jz",
-            'L': f"{self.base_url}-l",
-            'NQRW': f"{self.base_url}-nqrw",
-            'SIR': f"{self.base_url}-sir"
+            '1234567S': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs",
+            'ACEH': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace",
+            'BDFMFS': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm",
+            'G': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-g",
+            'JZ': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-jz",
+            'NQRW': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-nqrw",
+            'L': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l",
+            'SIR': "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si"
         }
         
         # Initialize Pygame
@@ -137,8 +143,9 @@ class MTADisplay:
                 response = requests.get(url, headers=headers, timeout=10)
                 response.raise_for_status()
                 
-                # Parse protobuf data (simplified - you may need to install gtfs-realtime-bindings)
-                # For now, we'll create mock data
+                logger.info(f"Response status: {response.status_code}, Content-Type: {response.headers.get('content-type', 'unknown')}")
+                
+                # Parse protobuf data
                 arrivals = self.parse_feed_data(response.content, feed_name)
                 all_arrivals.extend(arrivals)
                 
@@ -149,41 +156,121 @@ class MTADisplay:
         return all_arrivals
     
     def parse_feed_data(self, data: bytes, feed_name: str) -> List[Dict]:
-        """Parse MTA feed data (simplified version)"""
-        # This is a simplified parser - in reality you'd need to use the GTFS protobuf bindings
-        # For now, return mock data that looks realistic
+        """Parse real MTA feed data using protobuf"""
+        if not PROTOBUF_AVAILABLE:
+            logger.error("Protobuf not available - cannot parse MTA data")
+            return []
+
+        try:
+            logger.info(f"Parsing {len(data)} bytes of data from {feed_name}")
+            # Check if we got an error response instead of protobuf data
+            if len(data) < 1000:  # Likely an error response
+                logger.error(f"Received error response ({len(data)} bytes) from MTA API. Data: {data[:100]}")
+                return []
+            
+            feed = gtfs_realtime_pb2.FeedMessage()
+            feed.ParseFromString(data)
+            
+            logger.info(f"Feed has {len(feed.entity)} entities")
+            arrivals = []
+            current_time = datetime.now()
+            
+            # Station ID mapping for Atlantic Ave - Barclays Center
+            # A42 serves: 2,3,4,5 lines
+            # R30 serves: B,D,N,Q,R lines
+            target_stations = {
+                'A42': ['2', '3', '4', '5'],  # Lines that serve A42
+                'R30': ['B', 'D', 'N', 'Q', 'R'],  # Lines that serve R30
+            }
+            
+            for entity in feed.entity:
+                if entity.HasField('trip_update'):
+                    trip_update = entity.trip_update
+                    
+                    # Get route ID
+                    route_id = trip_update.trip.route_id
+                    
+                    # Check if this trip has stops at our target station
+                    for stop_update in trip_update.stop_time_update:
+                        stop_id = stop_update.stop_id
+                        
+                        # Check if this route serves this station
+                        station_served = False
+                        for station_id, serving_routes in target_stations.items():
+                            if station_id in stop_id and route_id in serving_routes:
+                                station_served = True
+                                break
+                        
+                        if station_served:
+                            if stop_update.HasField('arrival'):
+                                arrival_time = datetime.fromtimestamp(stop_update.arrival.time)
+                                
+                                # Only show arrivals in the next 30 minutes
+                                if arrival_time > current_time and (arrival_time - current_time).total_seconds() < 1800:
+                                    # Get trip details
+                                    trip = trip_update.trip
+                                    # Handle different field names for trip headsign
+                                    headsign = getattr(trip, 'trip_headsign', None) or getattr(trip, 'headsign', None)
+                                    
+                                    # Note: MTA real-time feeds don't include trip_headsign
+                                    # We'll use fallback destinations based on route
+                                    
+                                    destination = self._get_destination_name(headsign, route_id)
+                                    
+                                    arrivals.append({
+                                        'route_id': route_id,
+                                        'station_id': stop_id,
+                                        'arrival_time': arrival_time,
+                                        'destination': destination,
+                                        'detail': self._get_route_detail(route_id),
+                                        'status': 'On Time'
+                                    })
+            
+            # Sort by arrival time and limit to 4 per feed
+            arrivals.sort(key=lambda x: x['arrival_time'])
+            return arrivals[:4]
+            
+        except Exception as e:
+            logger.error(f"Error parsing protobuf data: {e}")
+            return []
+    
+    
+    def _get_destination_name(self, headsign: str, route_id: str = None) -> str:
+        """Clean up destination names from MTA data"""
+        if not headsign or headsign == "Unknown":
+            # Provide fallback destinations based on route
+            fallback_destinations = {
+                '1': '242 St', '2': 'Flatbush Av', '3': 'Jamaica Center', '4': 'Woodlawn', 
+                '5': '242 St', '6': 'Pelham Bay Park', '7': 'Flushing-Main St',
+                'A': 'Inwood-207 St', 'C': 'Euclid Av', 'E': 'Jamaica Center',
+                'B': 'Brighton Beach', 'D': 'Coney Island', 'F': 'Jamaica-179 St', 'M': 'Middle Village',
+                'G': 'Church Av', 'J': 'Jamaica Center', 'Z': 'Jamaica Center', 'L': 'Canarsie-Rockaway Pkwy',
+                'N': 'Coney Island', 'Q': 'Coney Island', 'R': 'Bay Ridge-95 St', 'W': 'Astoria-Ditmars Blvd',
+                'S': 'Times Sq-42 St'
+            }
+            return fallback_destinations.get(route_id, "Unknown")
         
-        mock_arrivals = []
-        routes = {
-            '123456': ['1', '2', '3', '4', '5', '6'],
-            'ACE': ['A', 'C', 'E'],
-            'BDFM': ['B', 'D', 'F', 'M'],
-            'G': ['G'],
-            'JZ': ['J', 'Z'],
-            'L': ['L'],
-            'NQRW': ['N', 'Q', 'R', 'W'],
-            'SIR': ['S']
+        # Remove common prefixes and clean up
+        headsign = headsign.replace("To ", "").replace("TO ", "")
+        return headsign.strip()
+    
+    def _get_route_detail(self, route_id: str) -> str:
+        """Get route detail based on route ID"""
+        details = {
+            '1': '242 St', '2': 'Flatbush Av', '3': 'Jamaica Center', '4': 'Woodlawn', '5': '242 St', '6': 'Pelham Bay Park',
+            'A': 'Inwood-207 St', 'C': 'Euclid Av', 'E': 'Jamaica Center',
+            'B': 'Brighton Beach', 'D': 'Coney Island', 'F': 'Jamaica-179 St', 'M': 'Middle Village',
+            'G': 'Church Av', 'J': 'Jamaica Center', 'Z': 'Jamaica Center', 'L': 'Canarsie-Rockaway Pkwy',
+            'N': 'Coney Island', 'Q': 'Coney Island', 'R': 'Bay Ridge-95 St', 'W': 'Astoria-Ditmars Blvd',
+            'S': 'Times Sq-42 St'
         }
-        
-        current_time = datetime.now()
-        for route in routes.get(feed_name, []):
-            for i in range(3):  # Show next 3 trains
-                arrival_time = current_time + timedelta(minutes=2 + i * 3 + (i % 2))
-                mock_arrivals.append({
-                    'route_id': route,
-                    'station_id': self.station_id or 'mock_station',
-                    'arrival_time': arrival_time,
-                    'destination': f"To {['Brooklyn', 'Queens', 'Bronx'][i % 3]}",
-                    'status': 'On Time'
-                })
-        
-        return mock_arrivals
+        return details.get(route_id, 'Unknown')
     
     def filter_nearby_stations(self, arrivals: List[Dict]) -> List[Dict]:
         """Filter arrivals to show only nearby stations"""
-        # For now, return all arrivals since we're using mock data
+        # For now, return all arrivals since we're using realistic mock data
         # In a real implementation, you'd filter by distance from your location
-        return arrivals[:12]  # Show max 12 arrivals
+        return arrivals[:4]  # Show max 4 arrivals like real MTA displays
     
     def format_time_remaining(self, arrival_time: datetime) -> str:
         """Format time remaining until arrival"""
@@ -278,6 +365,24 @@ class MTADisplay:
         sign_id = "MTA-001"
         id_surface = self.detail_font.render(sign_id, True, self.colors['text_white'])
         self.screen.blit(id_surface, (20, 20))
+        
+        # Draw station name below the sign ID
+        station_surface = self.destination_font.render(self.station_name, True, self.colors['text_white'])
+        self.screen.blit(station_surface, (20, 45))
+        
+        # Check if we have any arrivals
+        if not arrivals:
+            # Draw error message
+            error_surface = self.destination_font.render("NO DATA AVAILABLE", True, self.colors['text_white'])
+            error_rect = error_surface.get_rect(center=(self.screen.get_width() // 2, self.screen.get_height() // 2))
+            self.screen.blit(error_surface, error_rect)
+            
+            # Draw additional error info
+            error_detail = self.detail_font.render("Check MTA API connection", True, self.colors['text_secondary'])
+            detail_rect = error_detail.get_rect(center=(self.screen.get_width() // 2, self.screen.get_height() // 2 + 40))
+            self.screen.blit(error_detail, detail_rect)
+            pygame.display.flip()
+            return
         
         # Draw arrivals in horizontal rows like the real display
         y_start = 80

@@ -25,9 +25,10 @@ The display shows:
 
 ### 1. MTA Data Access
 
-✅ **Great news!** MTA data feeds are now **free and open** - no API key required!
-- Visit [MTA Developer Resources](https://api.mta.info/) for more information
-- All GTFS Real-Time feeds are publicly available
+✅ **Free Public Feeds**: MTA real-time data is available without an API key!
+- Visit [MTA API Documentation](https://api.mta.info/#/subwayRealTimeFeeds) for details
+- All GTFS Real-Time feeds are publicly accessible
+- Optional: Get an API key for higher rate limits
 
 ### 2. Install on Raspberry Pi
 
@@ -40,7 +41,17 @@ cd muffin
 ./install.sh
 ```
 
-### 3. Configure
+### 3. Test MTA API Connection
+
+Test the MTA API connection:
+```bash
+# Test your API connection
+python test_api.py
+```
+
+This will verify that the MTA feeds are accessible.
+
+### 4. Configure
 
 Edit the configuration file:
 ```bash
@@ -49,10 +60,11 @@ nano /home/pi/mta-display/config.env
 
 Set your preferences:
 ```env
-# MTA_API_KEY=optional_api_key_here  # No longer required!
-LATITUDE=40.7589
-LONGITUDE=-73.9851
-STATION_NAME=Times Sq-42 St
+# MTA_API_KEY=optional_api_key_here  # Optional for higher rate limits
+LATITUDE=40.6843
+LONGITUDE=-73.9779
+STATION_ID=<ENTERHERE>
+STATION_NAME=Atlantic Av-Barclays Ctr
 REFRESH_INTERVAL=30
 FULLSCREEN=true
 ```

@@ -22,7 +22,7 @@ class TestMTADisplay(MTADisplay):
         # No API key needed - MTA feeds are now free!
         os.environ['LATITUDE'] = '40.7589'
         os.environ['LONGITUDE'] = '-73.9851'
-        os.environ['STATION_NAME'] = 'Times Sq-42 St'
+        os.environ['STATION_NAME'] = 'Atlantic Av-Barclays Ctr'
         os.environ['FULLSCREEN'] = 'false'
         os.environ['REFRESH_INTERVAL'] = '5'
         
@@ -34,35 +34,35 @@ class TestMTADisplay(MTADisplay):
         
         mock_arrivals = [
             {
-                'route_id': 'B',
+                'route_id': '2',
                 'station_id': 'test_station',
                 'arrival_time': current_time + timedelta(minutes=1),
-                'destination': 'Uptown',
-                'detail': '145 St',
+                'destination': 'Flatbush Av',
+                'detail': 'Brooklyn',
                 'status': 'On Time'
             },
             {
-                'route_id': 'F',
+                'route_id': '3',
                 'station_id': 'test_station',
                 'arrival_time': current_time + timedelta(minutes=2),
-                'destination': 'Downtown & Brooklyn',
-                'detail': 'Coney Island',
+                'destination': 'Jamaica Center',
+                'detail': 'Queens',
                 'status': 'On Time'
             },
             {
-                'route_id': '1',
+                'route_id': '4',
                 'station_id': 'test_station',
                 'arrival_time': current_time + timedelta(minutes=3),
-                'destination': 'Uptown',
-                'detail': '242 St',
+                'destination': 'Woodlawn',
+                'detail': 'Bronx',
                 'status': 'On Time'
             },
             {
-                'route_id': 'A',
+                'route_id': '5',
                 'station_id': 'test_station',
                 'arrival_time': current_time + timedelta(minutes=4),
                 'destination': 'Uptown',
-                'detail': 'Inwood-207 St',
+                'detail': '242 St',
                 'status': 'On Time'
             }
         ]
