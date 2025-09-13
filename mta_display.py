@@ -39,7 +39,9 @@ class MTADisplay:
         
         self.latitude = float(os.getenv('LATITUDE', '40.6843'))
         self.longitude = float(os.getenv('LONGITUDE', '-73.9779'))
-        self.station_id = os.getenv('STATION_ID', 'A42')
+        # Parse multiple station IDs (comma-separated)
+        station_ids = os.getenv('STATION_ID', 'A42,R30')
+        self.station_ids = [sid.strip() for sid in station_ids.split(',')]
         self.station_name = os.getenv('STATION_NAME', 'Atlantic Av-Barclays Ctr')
         self.refresh_interval = int(os.getenv('REFRESH_INTERVAL', '30'))
         self.fullscreen = os.getenv('FULLSCREEN', 'true').lower() == 'true'
@@ -175,13 +177,18 @@ class MTADisplay:
             arrivals = []
             current_time = datetime.now()
             
-            # Station ID mapping for Atlantic Ave - Barclays Center
-            # A42 serves: 2,3,4,5 lines
-            # R30 serves: B,D,N,Q,R lines
-            target_stations = {
-                'A42': ['2', '3', '4', '5'],  # Lines that serve A42
-                'R30': ['B', 'D', 'N', 'Q', 'R'],  # Lines that serve R30
-            }
+            # Build station mapping dynamically based on configured station IDs
+            target_stations = {}
+            for station_id in self.station_ids:
+                if station_id in ['A42', 'A42N', 'A42S']:
+                    # IRT platforms (2,3,4,5 lines)
+                    target_stations[station_id] = ['2', '3', '4', '5']
+                elif station_id in ['R30', 'R30N', 'R30S']:
+                    # BMT platforms (B,D,N,Q,R lines)
+                    target_stations[station_id] = ['B', 'D', 'N', 'Q', 'R']
+                else:
+                    # For other stations, we'd need to map them individually
+                    logger.warning(f"Unknown station ID: {station_id}")
             
             for entity in feed.entity:
                 if entity.HasField('trip_update'):
@@ -195,6 +202,7 @@ class MTADisplay:
                         stop_id = stop_update.stop_id
                         
                         # Check if this route serves this station
+                        # Atlantic Ave has multiple station IDs: A42, A42S, A42N, R30, R30S, R30N
                         station_served = False
                         for station_id, serving_routes in target_stations.items():
                             if station_id in stop_id and route_id in serving_routes:
@@ -417,6 +425,9 @@ class MTADisplay:
     def run(self):
         """Main application loop"""
         logger.info("Starting MTA Display...")
+        logger.info(f"Station: {self.station_name} ({', '.join(self.station_ids)})")
+        logger.info(f"Location: {self.latitude}, {self.longitude}")
+        logger.info(f"Refresh interval: {self.refresh_interval} seconds")
         last_update = 0
         
         while self.running:
