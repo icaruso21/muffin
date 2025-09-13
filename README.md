@@ -23,12 +23,11 @@ The display shows:
 
 ## Quick Start
 
-### 1. Get Your MTA API Key
+### 1. MTA Data Access
 
-1. Visit [MTA Developer Resources](https://api.mta.info/)
-2. Sign up for an account
-3. Request access to the GTFS Real-Time feeds
-4. Copy your API key
+✅ **Great news!** MTA data feeds are now **free and open** - no API key required!
+- Visit [MTA Developer Resources](https://api.mta.info/) for more information
+- All GTFS Real-Time feeds are publicly available
 
 ### 2. Install on Raspberry Pi
 
@@ -48,9 +47,9 @@ Edit the configuration file:
 nano /home/pi/mta-display/config.env
 ```
 
-Set your API key and preferences:
+Set your preferences:
 ```env
-MTA_API_KEY=your_actual_api_key_here
+# MTA_API_KEY=optional_api_key_here  # No longer required!
 LATITUDE=40.7589
 LONGITUDE=-73.9851
 STATION_NAME=Times Sq-42 St
@@ -98,7 +97,7 @@ pip3 install -r requirements.txt
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MTA_API_KEY` | Your MTA API key (required) | - |
+| `MTA_API_KEY` | Your MTA API key (optional) | - |
 | `LATITUDE` | Your latitude for nearby stations | 40.7589 |
 | `LONGITUDE` | Your longitude for nearby stations | -73.9851 |
 | `STATION_ID` | Specific station ID to monitor | - |
@@ -141,9 +140,9 @@ sudo systemctl disable mta-display
 - Try running manually: `python3 mta_display.py`
 
 ### API Issues
-- Verify your API key is correct
 - Check your internet connection
 - View logs for specific error messages: `journalctl -u mta-display -f`
+- Note: API key is no longer required for MTA feeds
 
 ### Service Won't Start
 - Check the service status: `sudo systemctl status mta-display`
@@ -155,8 +154,7 @@ sudo systemctl disable mta-display
 ### Running in Development Mode
 
 ```bash
-# Set environment variables
-export MTA_API_KEY=your_key_here
+# Set environment variables (API key optional)
 export FULLSCREEN=false
 
 # Run directly

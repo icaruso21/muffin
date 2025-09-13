@@ -26,10 +26,9 @@ load_dotenv()
 class MTADisplay:
     def __init__(self):
         """Initialize the MTA Display application"""
-        self.api_key = os.getenv('MTA_API_KEY')
+        self.api_key = os.getenv('MTA_API_KEY')  # Optional - no longer required
         if not self.api_key:
-            logger.error("MTA_API_KEY not found in environment variables")
-            sys.exit(1)
+            logger.info("No MTA API key provided - using free public feeds")
         
         self.latitude = float(os.getenv('LATITUDE', '40.7589'))
         self.longitude = float(os.getenv('LONGITUDE', '-73.9851'))
@@ -125,7 +124,9 @@ class MTADisplay:
         
         for feed_name, url in self.feed_urls.items():
             try:
-                headers = {'x-api-key': self.api_key}
+                headers = {}
+                if self.api_key:
+                    headers['x-api-key'] = self.api_key
                 response = requests.get(url, headers=headers, timeout=10)
                 response.raise_for_status()
                 

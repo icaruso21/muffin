@@ -19,7 +19,7 @@ class TestMTADisplay(MTADisplay):
     
     def __init__(self):
         # Set up test environment variables
-        os.environ['MTA_API_KEY'] = 'test_key'
+        # No API key needed - MTA feeds are now free!
         os.environ['LATITUDE'] = '40.7589'
         os.environ['LONGITUDE'] = '-73.9851'
         os.environ['STATION_NAME'] = 'Times Sq-42 St'
