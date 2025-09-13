@@ -21,19 +21,29 @@ fi
 APP_DIR="/home/pi/mta-display"
 echo "📁 Creating application directory: $APP_DIR"
 sudo mkdir -p "$APP_DIR"
-sudo chown pi:pi "$APP_DIR"
+
+# Get current user (works on both Pi and other systems)
+CURRENT_USER=$(whoami)
+CURRENT_GROUP=$(id -gn)
+echo "👤 Using user: $CURRENT_USER:$CURRENT_GROUP"
+sudo chown $CURRENT_USER:$CURRENT_GROUP "$APP_DIR"
 
 # Copy application files
 echo "📋 Copying application files..."
 sudo cp mta_display.py "$APP_DIR/"
 sudo cp requirements.txt "$APP_DIR/"
 sudo cp config.env.example "$APP_DIR/"
-sudo chown pi:pi "$APP_DIR"/*
+sudo chown $CURRENT_USER:$CURRENT_GROUP "$APP_DIR"/*
 
 # Install Python dependencies
 echo "🐍 Installing Python dependencies..."
-sudo apt-get update
-sudo apt-get install -y python3-pip python3-pygame python3-requests python3-geopy
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    sudo apt-get update
+    sudo apt-get install -y python3-pip python3-pygame python3-requests python3-geopy
+else
+    echo "   Skipping apt-get (not on Linux). Please install dependencies manually:"
+    echo "   pip3 install -r requirements.txt"
+fi
 
 # Install Python packages
 pip3 install -r requirements.txt
@@ -46,15 +56,49 @@ if [ ! -f "$APP_DIR/config.env" ]; then
     echo "   Location: $APP_DIR/config.env"
 fi
 
-# Install systemd service
+# Install systemd service (only on Linux systems)
 echo "🔧 Installing systemd service..."
-sudo cp mta-display.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable mta-display.service
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Create dynamic service file with current user
+    cat > /tmp/mta-display.service << EOF
+[Unit]
+Description=NYC MTA Subway Display
+After=network.target graphical-session.target
+Wants=graphical-session.target
 
-# Set up display permissions
+[Service]
+Type=simple
+User=$CURRENT_USER
+Group=$CURRENT_GROUP
+WorkingDirectory=$APP_DIR
+Environment=DISPLAY=:0
+Environment=PYTHONPATH=$APP_DIR
+ExecStart=/usr/bin/python3 $APP_DIR/mta_display.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical-session.target
+EOF
+    
+    sudo cp /tmp/mta-display.service /etc/systemd/system/mta-display.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable mta-display.service
+    rm /tmp/mta-display.service
+else
+    echo "   Skipping systemd service (not on Linux)"
+    echo "   To run on macOS, use: python3 mta_display.py"
+fi
+
+# Set up display permissions (only on Linux systems)
 echo "🖥️  Setting up display permissions..."
-sudo usermod -a -G video pi
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    sudo usermod -a -G video $CURRENT_USER
+else
+    echo "   Skipping display permissions setup (not on Linux)"
+fi
 
 # Create startup script
 echo "🚀 Creating startup script..."
